@@ -1,13 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os/exec"
 	"strings"
 
 	"github.com/fishioon/wxgo/webwx"
-	"github.com/labstack/echo"
 	qrcode "github.com/skip2/go-qrcode"
 )
 
@@ -34,24 +34,49 @@ func msgHandle(wx *webwx.Wechat, msgs []*webwx.Msg) error {
 }
 
 // WebwxRun login webwx and run
-func WebwxRun(c echo.Context) (err error) {
-	codeURL, err := webwx.NewLoginCodeURL()
+func WebwxRun(w http.ResponseWriter, _ *http.Request) {
+	png, err := webwxRun()
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
-	}
-	png, err := qrcode.Encode(codeURL, qrcode.Medium, 256)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "qrcode encode failed")
-	}
-	return c.Blob(http.StatusOK, "image/jpeg", png)
-}
-
-func handleScript(c echo.Context) (err error) {
-	var res string
-	if res, err = runShellCommand(c.QueryParam("script")); err != nil {
+		w.Write([]byte(err.Error()))
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	return c.JSON(http.StatusOK, res)
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("content-type", "image/jpeg")
+	w.Write(png)
+}
+
+func webwxRun() ([]byte, error) {
+	codeURL, err := webwx.NewLoginCodeURL()
+	if err != nil {
+		return nil, err
+	}
+	return qrcode.Encode(codeURL, qrcode.Medium, 256)
+	// return c.Blob(http.StatusOK, "image/jpeg", png)
+}
+
+func handleScript(w http.ResponseWriter, r *http.Request) {
+	res, err := runShellCommand(r.URL.Query().Get("script"))
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	w.Write([]byte(res))
+}
+
+func handleLocation(w http.ResponseWriter, r *http.Request) {
+	location := r.URL.Query().Get("location")
+	if location == "" {
+		location = "Automatic"
+	}
+	res, err := changeNetworkLocation(location)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	w.Write([]byte(res))
 }
 
 func runShellCommand(script string) (string, error) {
@@ -61,4 +86,9 @@ func runShellCommand(script string) (string, error) {
 		log.Fatalf("cmd.Run() failed with %s\n", err)
 	}
 	return string(out), nil
+}
+
+func changeNetworkLocation(location string) (string, error) {
+	cmd := fmt.Sprintf("networksetup -switchtolocation \"%s\"", location)
+	return runShellCommand(cmd)
 }

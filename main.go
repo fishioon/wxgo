@@ -2,14 +2,13 @@ package main
 
 import (
 	"flag"
+	"log"
 	"fmt"
 	"math/rand"
 	"net/http"
 	"time"
 
 	"github.com/fishioon/wxgo/webwx"
-	"github.com/golang/glog"
-	"github.com/labstack/echo"
 )
 
 var (
@@ -41,12 +40,8 @@ func main() {
 	// wait login
 	go webwx.Run(msgHandle, "")
 
-	e := echo.New()
-	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "Hello, World!")
-	})
-	e.GET("/webwx/new", WebwxRun)
-
-	e.GET("/cmd/shell", handleScript)
-	glog.Fatal(e.Start(*listenHost))
+	http.HandleFunc("/cmd/shell", handleScript)
+	http.HandleFunc("/cmd/network/location", handleLocation)
+	http.HandleFunc("/webwx/new", WebwxRun)
+	log.Fatal(http.ListenAndServe(*listenHost, nil))
 }
