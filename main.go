@@ -43,5 +43,6 @@ func main() {
 	http.HandleFunc("/cmd/shell", handleScript)
 	http.HandleFunc("/cmd/network/location", handleLocation)
 	http.HandleFunc("/webwx/new", WebwxRun)
+	fmt.Printf("login wechat with [http://%s/webwx/new]\n", *listenHost)
 	log.Fatal(http.ListenAndServe(*listenHost, nil))
 }
