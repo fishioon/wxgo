@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
-	"log"
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"time"
